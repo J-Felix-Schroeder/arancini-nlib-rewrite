@@ -1,8 +1,11 @@
-from run import run_and_return
-import re
+from elftools.elf.elffile import ELFFile
 
 def get_buildid(path):
-    out = run_and_return(["readelf", "-n", path])
-    match = re.search(r"Build ID:\s*([0-9a-f]+)", out)
-    buildid = match.group(1)
+    f = open(path, "rb")
+    elf = ELFFile(f)
+    buildid = None
+    for note in elf.get_section_by_name(".note.gnu.build-id").iter_notes():
+        if note["n_type"] == "NT_GNU_BUILD_ID":
+            buildid = note["n_desc"]
+    f.close()
     return buildid
