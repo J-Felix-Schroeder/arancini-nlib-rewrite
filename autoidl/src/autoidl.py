@@ -1,7 +1,9 @@
 import argparse
+from getdwarf import get_dwarf_path
 
 def process_soname(soname):
     print("processing", soname)
+    print("dwarf path:", get_dwarf_path(soname, None))
 
 def main():
     p = argparse.ArgumentParser(prog="autoidl", description="automatic idl generation")
