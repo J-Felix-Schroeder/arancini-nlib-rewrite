@@ -232,6 +232,12 @@ static void *setup_guest_stack(int argc, const char **argv, void *stack_bottom,
 
 static std::unordered_map<unsigned long, void *> fn_addrs;
 
+extern "C" {
+lib_info *lib_info_list = nullptr;
+lib_info *lib_info_list_tail = nullptr;
+int lib_count = 0;
+}
+
 /*
  * Initialises the dynamic runtime for the guest program that is about to be
  * executed.
@@ -344,6 +350,131 @@ extern "C" void *initialise_dynamic_runtime(unsigned long entry_point, int argc,
     util::global_logger.info("state={} pc={:#x} stack={:#x}\n",
                              fmt::ptr(x86_state), util::copy(x86_state->PC),
                              util::copy(x86_state->RSP));
+
+    if (&GUEST(main_ctor_queue) != nullptr) {
+        size_t tls_cnt = 0;
+        tls_module *tls_tail = nullptr;
+
+        size_t tls_align = alignof(guest_pthread);
+
+        auto app_dso = new dso();
+        app_dso->dynv = &guest_exec_DYNAMIC;
+        //		app_dso->base = &guest_exec_base; //Load offset assume 0
+        // since not pie
+        if (&guest_exec_tls) {
+            app_dso->tls_id = tls_cnt = 1;
+            app_dso->tls = guest_exec_tls;
+            // Correct over alignment
+            app_dso->tls.offset -=
+                app_dso->tls.align - 1 -
+                ((-((uintptr_t)app_dso->tls.image + app_dso->tls.size)) &
+                 (app_dso->tls.align - 1));
+            GUEST(__libc).tls_head = tls_tail = &app_dso->tls;
+
+#define MAXP2(a, b) (-(-(a) & -(b)))
+            tls_align = MAXP2(tls_align, app_dso->tls.align);
+        }
+
+        auto dsos = new dso *[lib_count + 2];
+
+        lib_info *lib = lib_info_list;
+
+        for (int i = 0; i < lib_count; ++i, lib = lib->next) {
+            auto cur_dso = new dso();
+            cur_dso->dynv = lib->dynv;
+            cur_dso->base = lib->base;
+
+            for (uint64_t *func_map = lib->func_map; *func_map; func_map += 2) {
+                fn_addrs.emplace(func_map[0], (void *)func_map[1]);
+            }
+
+            if (lib->tls_len) {
+
+                cur_dso->tls = {nullptr,       lib->tls_image, lib->tls_len,
+                                lib->tls_size, lib->tls_align, lib->tls_offset};
+                cur_dso->tls_id = tls_cnt++;
+
+                for (uint64_t **dtp_mod = lib->dtp_mod; *dtp_mod; dtp_mod++) {
+                    *(*dtp_mod) = tls_cnt;
+                }
+
+                tls_align = MAXP2(tls_align, cur_dso->tls.align);
+#undef MAXP2
+                if (tls_tail) {
+                    tls_tail->next = &cur_dso->tls;
+                } else {
+                    GUEST(__libc).tls_head = &cur_dso->tls;
+                }
+                tls_tail = &cur_dso->tls;
+            }
+            dsos[i] = cur_dso;
+        }
+
+        dsos[lib_count] = app_dso;
+        dsos[lib_count + 1] = nullptr;
+
+        GUEST(main_ctor_queue) = dsos;
+
+        GUEST(__malloc_replaced) = 1; // Prevent guest musl from trying to free
+                                      // our allocations using their free
+
+        GUEST(__libc).tls_cnt = tls_cnt;
+        GUEST(__libc).tls_align = tls_align;
+
+#define ALIGN(x, y) (((x) + (y) - 1) & -(y))
+        GUEST(__libc).tls_size =
+            ALIGN((1 + tls_cnt) * sizeof(void *) + tls_offset +
+                      sizeof(guest_pthread) + tls_align * 2,
+                  tls_align);
+#undef ALIGN
+
+        guest_pthread_t td;
+        auto *mem = new unsigned char[GUEST(__libc).tls_size]();
+
+        // adapted from __copy_tls in musl
+        {
+            struct tls_module *p;
+            size_t i;
+            uintptr_t *dtv;
+
+            dtv = (uintptr_t *)mem;
+
+            mem += GUEST(__libc).tls_size - sizeof(guest_pthread);
+            mem -= (uintptr_t)mem & (GUEST(__libc).tls_align - 1);
+            td = (guest_pthread_t)mem;
+
+            for (i = 1, p = GUEST(__libc).tls_head; p; i++, p = p->next) {
+                dtv[i] = (uintptr_t)(mem - p->offset);
+                memcpy(mem - p->offset, p->image, p->len);
+            }
+            dtv[0] = GUEST(__libc).tls_cnt;
+            td->dtv = dtv;
+        }
+
+        // adapted from __init_tp in musl
+        {
+            td->self = td;
+
+            x86_state->FS = reinterpret_cast<uint64_t>(td);
+
+            GUEST(__libc).can_do_threads = 1;
+
+            // Hacky supposedly unstable ABI
+            td->detach_state = DT_JOINABLE;
+
+            // Simulate set_tid_address syscall
+            x86_state->RAX = 218;
+            x86_state->RDI = (uintptr_t)&GUEST(__thread_list_lock);
+            execute_internal_call(x86_state, 1);
+
+            td->tid = (int32_t)x86_state->RAX;
+
+            td->locale = &GUEST(__libc).global_locale;
+            td->robust_list.head = &td->robust_list.head;
+            td->sysinfo = GUEST(__sysinfo);
+            td->next = td->prev = td;
+        }
+    }
 
     // Initialisation of the runtime is complete - return a pointer to the
     // raw CPU state structure so that the static code can use it for
