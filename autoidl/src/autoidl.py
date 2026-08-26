@@ -3,8 +3,10 @@ from getdwarf import get_dwarf_path, get_path_from_soname
 from elfhelper import get_exported_symbols
 from dwarfhelper import get_signatures
 from aidlsig import AidlLibrary, AidlSignature
+from flibmaker import build_flib, translate_flib
+from pathman import get_idl_path
 
-def merge(soname, symbols, signatures):
+def merge(soname, path, symbols, signatures):
     sigs = []
     for addr, names in symbols.items():
         if addr not in signatures:
@@ -12,7 +14,7 @@ def merge(soname, symbols, signatures):
         sig = signatures[addr]
         for name in names:
             sigs.append(AidlSignature(name, sig.return_type, sig.arguments))
-    return AidlLibrary(soname, sigs)
+    return AidlLibrary(soname, path, sigs)
 
 def process_soname(soname):
     print("processing", soname)
@@ -21,7 +23,12 @@ def process_soname(soname):
     print("dwarf path:", dwarf_path)
     symbols = get_exported_symbols(path)
     signatures = get_signatures(dwarf_path)
-    print(merge(soname, symbols, signatures))
+    library = merge(soname, path, symbols, signatures)
+    idl_path = get_idl_path(soname)
+    with open(idl_path, "w") as f:
+        f.write(str(library))
+    flib_path = build_flib(library)
+    return translate_flib(soname, flib_path, idl_path)
 
 def main():
     p = argparse.ArgumentParser(prog="autoidl", description="automatic idl generation")

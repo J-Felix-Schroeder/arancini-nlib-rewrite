@@ -116,10 +116,11 @@ class AidlSignature:
 @dataclass(frozen=True)
 class AidlLibrary:
     soname: Any
+    path: Any
     signatures: Any
 
     def __str__(self):
-        lines = ['library "' + self.soname + '";']
+        lines = ['library "' + self.path + '";']
         for sig in self.signatures:
             prefix = ""
             if not sig.is_supported():
