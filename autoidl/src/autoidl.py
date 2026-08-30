@@ -6,6 +6,26 @@ from aidlsig import AidlLibrary, AidlSignature
 from flibmaker import build_flib, translate_flib, translate_libc
 from pathman import get_idl_path, get_musl_auto_lid_path
 from run import run_txlat
+import analytics
+
+analyze = False
+
+def analyze_lib(library, symbols):
+    analytics.start()
+    analytics.fill("soname", library.soname)
+    exported = 0
+    for names in symbols.values():
+        exported = exported + len(names)
+    supported = 0
+    for sig in library.signatures:
+        reasons = set(sig.unsupported_reasons())
+        if not reasons:
+            supported = supported + 1
+        for reason in reasons:
+            analytics.fill_record(reason)
+    analytics.fill("total_fn_count", exported)
+    analytics.fill("described_fn_count", len(library.signatures))
+    analytics.fill("supported_fn_count", supported)
 
 def merge(soname, path, symbols, signatures):
     sigs = []
@@ -24,8 +44,11 @@ def process_libc():
     symbols = get_exported_symbols(path)
     signatures = get_signatures(dwarf_path)
     library = merge("libc.so.6", path, symbols, signatures)
+    analyze_lib(library, symbols)
     with open(get_musl_auto_lid_path(), "w") as f:
         f.write(str(library))
+    if analyze:
+        return None
     return translate_libc()
 
 def translate_elf(elf_path, libs, out_path):
@@ -42,31 +65,44 @@ def translate_elf(elf_path, libs, out_path):
 
 def process_soname(soname):
     print("processing", soname)
+    analytics.record("libs_attempted")
     if soname == "libc.so" or soname == "libc.so.6":
         return process_libc()
     path = get_path_from_soname(soname)
     dwarf_path = get_dwarf_path(soname, None)
     print("dwarf path:", dwarf_path)
+    if dwarf_path is None:
+        analytics.record("no_debug_info")
+        return None
     symbols = get_exported_symbols(path)
     signatures = get_signatures(dwarf_path)
     library = merge(soname, path, symbols, signatures)
+    analyze_lib(library, symbols)
     idl_path = get_idl_path(soname)
     with open(idl_path, "w") as f:
         f.write(str(library))
+    if analyze:
+        return None
     flib_path = build_flib(library)
     return translate_flib(soname, flib_path, idl_path)
 
 def main():
     p = argparse.ArgumentParser(prog="autoidl", description="automatic idl generation")
-    p.add_argument("-s", "--soname", nargs="?")
+    p.add_argument("-s", "--soname", nargs="+")
+    p.add_argument("-f", "--file", help="file with one soname per line", nargs="?")
     p.add_argument("-i", "--input",  nargs="?")
     p.add_argument("-o", "--output", nargs="?")
+    p.add_argument("--anal", action="store_true")
     args = p.parse_args()
+    global analyze
+    analyze = args.anal
     
     sonames = []
     
     if args.soname:
-        sonames.append(args.soname)
+        sonames = sonames + args.soname
+    if args.file:
+        sonames = sonames + open(args.file).read().split()
     if args.input:
         sonames = sonames + get_dtneeded(args.input)
 
@@ -75,7 +111,11 @@ def main():
 
     libs = []
     for soname in sonames:
-        libs.append(process_soname(soname))
+        lib = process_soname(soname)
+        if lib is not None:
+            libs.append(lib)
+
+    analytics.summarize()
 
     if args.input and args.output:
         translate_elf(args.input, libs, args.output)
