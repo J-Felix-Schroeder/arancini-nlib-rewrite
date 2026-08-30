@@ -1,5 +1,7 @@
+import os
 from elftools.elf.elffile import ELFFile
 from elftools.dwarf.enums import ENUM_DW_ATE
+from getdwarf import debuginfod_find
 from aidlsig import AidlBasicType, AidlInt, AidlFloat, AidlPointer, AidlFnptr, AidlUnsupported, AidlArgument, AidlSignature
 
 AGGREGATE_TAGS = ["DW_TAG_structure_type", "DW_TAG_union_type", "DW_TAG_class_type"]
@@ -91,9 +93,23 @@ def get_signature(die):
             args.append(AidlArgument(get_type(child), argname))
     return AidlSignature(name, get_type(die), tuple(args))
 
+def load_supplementary(dwarf_path, elf, dwarf):
+    section = elf.get_section_by_name(".gnu_debugaltlink")
+    if section is None:
+        return
+    name, buildid = section.data().split(b"\x00", 1)
+    sup_path = os.path.join(os.path.dirname(dwarf_path), name.decode())
+    if not os.path.isfile(sup_path):
+        sup_path = debuginfod_find(buildid.hex())
+    if sup_path is None:
+        return
+    dwarf.supplementary_dwarfinfo = ELFFile(open(sup_path, "rb")).get_dwarf_info()
+
 def get_signatures(dwarf_path):
     f = open(dwarf_path, "rb")
-    dwarf = ELFFile(f).get_dwarf_info()
+    elf = ELFFile(f)
+    dwarf = elf.get_dwarf_info()
+    load_supplementary(dwarf_path, elf, dwarf)
     signatures = {}
     for cu in dwarf.iter_CUs():
         for die in cu.iter_DIEs():
