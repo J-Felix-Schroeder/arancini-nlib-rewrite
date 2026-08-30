@@ -1,10 +1,11 @@
 import argparse
 from getdwarf import get_dwarf_path, get_path_from_soname
-from elfhelper import get_exported_symbols
+from elfhelper import get_exported_symbols, get_dtneeded
 from dwarfhelper import get_signatures
 from aidlsig import AidlLibrary, AidlSignature
 from flibmaker import build_flib, translate_flib, translate_libc
 from pathman import get_idl_path, get_musl_auto_lid_path
+from run import run_txlat
 
 def merge(soname, path, symbols, signatures):
     sigs = []
@@ -27,6 +28,18 @@ def process_libc():
         f.write(str(library))
     return translate_libc()
 
+def translate_elf(elf_path, libs, out_path):
+    flags = []
+    flags.append("-I")
+    flags.append(elf_path)
+    for lib in libs:
+        flags.append("-l")
+        flags.append(lib)
+    flags.append("-O")
+    flags.append(out_path)
+    run_txlat(flags)
+    return out_path
+
 def process_soname(soname):
     print("processing", soname)
     if soname == "libc.so" or soname == "libc.so.6":
@@ -46,18 +59,26 @@ def process_soname(soname):
 def main():
     p = argparse.ArgumentParser(prog="autoidl", description="automatic idl generation")
     p.add_argument("-s", "--soname", nargs="?")
+    p.add_argument("-i", "--input",  nargs="?")
+    p.add_argument("-o", "--output", nargs="?")
     args = p.parse_args()
     
     sonames = []
     
     if args.soname:
         sonames.append(args.soname)
+    if args.input:
+        sonames = sonames + get_dtneeded(args.input)
 
     if not sonames:
         print("no sonames provided")
 
+    libs = []
     for soname in sonames:
-        process_soname(soname)
+        libs.append(process_soname(soname))
+
+    if args.input and args.output:
+        translate_elf(args.input, libs, args.output)
 
 if __name__ == "__main__":
     main()

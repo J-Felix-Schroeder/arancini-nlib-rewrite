@@ -30,3 +30,14 @@ def get_exported_symbols(path):
     f.close()
 
     return symbols
+
+def get_dtneeded(path):
+    f = open(path, "rb")
+    elf = ELFFile(f)
+    dynamic = elf.get_section_by_name(".dynamic")
+    needed = []
+    for tag in dynamic.iter_tags():
+        if tag.entry.d_tag == "DT_NEEDED":
+            needed.append(tag.needed)
+    f.close()
+    return needed
