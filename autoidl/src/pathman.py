@@ -37,6 +37,15 @@ def get_musl_lid_path():
 def get_musl_auto_lid_path():
     return os.path.join(get_musl_dir_path(), "libc.auto.lid")
 
+def get_testsets_dir_path():
+    return os.path.join(get_aidl_dir_path(), "testsets")
+
+def get_box64_sonames_path():
+    return os.path.join(get_testsets_dir_path(), "box64_sonames.txt")
+
+def get_box64_trimmed_path():
+    return os.path.join(get_testsets_dir_path(), "box64_trimmed.txt")
+
 def get_idl_path(soname):
     return os.path.join(get_idl_dir_path(), soname + ".lid")
 
