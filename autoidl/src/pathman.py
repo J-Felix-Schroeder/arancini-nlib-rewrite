@@ -25,6 +25,18 @@ def get_flib_dir_path():
 def get_translated_dir_path():
     return os.path.join(get_out_dir_path(), "translated")
 
+def get_musl_dir_path():
+    return os.path.join(get_aidl_dir_path(), "musl")
+
+def get_musl_libc_path():
+    return os.path.join(get_musl_dir_path(), "musl-x86_64", "lib", "libc.so")
+
+def get_musl_lid_path():
+    return os.path.join(get_musl_dir_path(), "libc.lid")
+
+def get_musl_auto_lid_path():
+    return os.path.join(get_musl_dir_path(), "libc.auto.lid")
+
 def get_idl_path(soname):
     return os.path.join(get_idl_dir_path(), soname + ".lid")
 

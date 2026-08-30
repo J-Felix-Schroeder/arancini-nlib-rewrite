@@ -3,8 +3,8 @@ from getdwarf import get_dwarf_path, get_path_from_soname
 from elfhelper import get_exported_symbols
 from dwarfhelper import get_signatures
 from aidlsig import AidlLibrary, AidlSignature
-from flibmaker import build_flib, translate_flib
-from pathman import get_idl_path
+from flibmaker import build_flib, translate_flib, translate_libc
+from pathman import get_idl_path, get_musl_auto_lid_path
 
 def merge(soname, path, symbols, signatures):
     sigs = []
@@ -16,8 +16,21 @@ def merge(soname, path, symbols, signatures):
             sigs.append(AidlSignature(name, sig.return_type, sig.arguments))
     return AidlLibrary(soname, path, sigs)
 
+def process_libc():
+    # so we can copy libc idl easily to the lid file used for translation
+    path = get_path_from_soname("libc.so.6")
+    dwarf_path = get_dwarf_path("libc.so.6", None)
+    symbols = get_exported_symbols(path)
+    signatures = get_signatures(dwarf_path)
+    library = merge("libc.so.6", path, symbols, signatures)
+    with open(get_musl_auto_lid_path(), "w") as f:
+        f.write(str(library))
+    return translate_libc()
+
 def process_soname(soname):
     print("processing", soname)
+    if soname == "libc.so" or soname == "libc.so.6":
+        return process_libc()
     path = get_path_from_soname(soname)
     dwarf_path = get_dwarf_path(soname, None)
     print("dwarf path:", dwarf_path)
