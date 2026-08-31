@@ -541,7 +541,9 @@ void x86_input_arch::gen_wrapper(ir_builder &builder,
     builder.begin_packet(0);
 
     std::vector<value_type> params = func.sig.parameter_types();
-
+    const std::array<reg_offsets, 8> zmm_arg_regoff{reg_offsets::ZMM0, reg_offsets::ZMM1, reg_offsets::ZMM2, reg_offsets::ZMM3, reg_offsets::ZMM4, reg_offsets::ZMM5, reg_offsets::ZMM6, reg_offsets::ZMM7};
+    const std::array<reg_idx, 8> zmm_arg_regidx{reg_idx::ZMM0, reg_idx::ZMM1, reg_idx::ZMM2, reg_idx::ZMM3, reg_idx::ZMM4, reg_idx::ZMM5, reg_idx::ZMM6, reg_idx::ZMM7};
+    const std::array<const char *, 8> zmm_arg_regname{"ZMM0", "ZMM1", "ZMM2", "ZMM3", "ZMM4", "ZMM5", "ZMM6", "ZMM7"};
     const std::array<reg_offsets, 6> gpr_arg_regoff{
         reg_offsets::RDI, reg_offsets::RSI, reg_offsets::RDX,
         reg_offsets::RCX, reg_offsets::R8,  reg_offsets::R9};
@@ -552,6 +554,7 @@ void x86_input_arch::gen_wrapper(ir_builder &builder,
                                                       "RDX", "R8",  "R9"};
 
     int gri = 0;
+    int fri = 0;
 
     std::vector<port *> args;
     args.reserve(params.size());
@@ -577,8 +580,18 @@ void x86_input_arch::gen_wrapper(ir_builder &builder,
             }
             break;
         case value_type_class::floating_point:
-            throw std::runtime_error(
-                "Float args unsupported in native lib wrapper.");
+            if (fri >= 8) {
+                throw std::runtime_error(
+                    "Stack args unsupported in native lib wrapper.");
+            } else {
+                auto bits = builder.insert_read_reg(
+                    value_type(value_type_class::unsigned_integer, item.element_width()),
+                    (unsigned long)zmm_arg_regoff[fri],
+                    (unsigned long)zmm_arg_regidx[fri], zmm_arg_regname[fri]);
+                args.push_back(
+                    &builder.insert_bitcast(item, bits->val())->val());
+                fri++;
+            }
         }
     }
 
@@ -601,8 +614,18 @@ void x86_input_arch::gen_wrapper(ir_builder &builder,
         }
         break;
     case value_type_class::floating_point:
-        throw std::runtime_error(
-            "Float return types unsupported in native lib wrapper.");
+        if (retty.element_width() <= 64) {
+            auto retbits = builder.insert_bitcast(
+                value_type(value_type_class::unsigned_integer, retty.element_width()),
+                call->val());
+            builder.insert_write_reg(
+                static_cast<unsigned long>(reg_offsets::ZMM0),
+                static_cast<unsigned long>(reg_idx::ZMM0), "ZMM0",
+                retbits->val());
+        } else {
+            throw std::runtime_error(
+                "Return types > 64bit unsupported in native lib wrapper.");
+        }
     }
     builder.end_packet();
 
