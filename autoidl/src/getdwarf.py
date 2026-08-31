@@ -57,6 +57,12 @@ def find_lib(cachedir, native_path):
             return found[0]
     return None
 
+def debian_version(pkgname):
+    for line in run_and_return(["apt-cache", "madison", pkgname + ":amd64"]).splitlines():
+        if "deb.debian.org" in line:
+            return line.split("|")[1].strip()
+    return None
+
 def amd64_so_path(soname, native_path):
     cachedir = get_amd64_cache_path(soname)
     found = find_lib(cachedir, native_path)
@@ -65,8 +71,11 @@ def amd64_so_path(soname, native_path):
     package = get_packagename(native_path)
     if package is None:
         return None
+    version = debian_version(package)
+    if version is None:
+        return None
     os.makedirs(cachedir, exist_ok=True)
-    run_and_return(["apt", "download", package + ":amd64"], cachedir)
+    run_and_return(["apt", "download", package + ":amd64=" + version], cachedir)
     matches = glob.glob(os.path.join(cachedir, "*.deb"))
     if not matches:
         return None
