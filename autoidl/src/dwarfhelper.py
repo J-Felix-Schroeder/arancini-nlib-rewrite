@@ -2,9 +2,11 @@ import os
 from elftools.elf.elffile import ELFFile
 from elftools.dwarf.enums import ENUM_DW_ATE
 from getdwarf import debuginfod_find
-from aidlsig import AidlBasicType, AidlInt, AidlFloat, AidlPointer, AidlFnptr, AidlUnsupported, AidlArgument, AidlSignature
+from aidlsig import AidlBasicType, AidlInt, AidlFloat, AidlPointer, AidlFnptr, AidlStructptr, AidlUnsupported, AidlArgument, AidlSignature
 
 AGGREGATE_TAGS = ["DW_TAG_structure_type", "DW_TAG_union_type", "DW_TAG_class_type"]
+
+structmap = None
 
 def origin(die):
     if "DW_AT_abstract_origin" in die.attributes:
@@ -36,6 +38,16 @@ def strip(die):
         if die.tag not in ["DW_TAG_const_type", "DW_TAG_volatile_type", "DW_TAG_restrict_type", "DW_TAG_atomic_type", "DW_TAG_typedef"]:
             return die
 
+def struct_name(die):
+    typedef = None
+    while "DW_AT_type" in die.attributes:
+        die = die.get_DIE_from_attribute("DW_AT_type")
+        if die.tag == "DW_TAG_typedef":
+            typedef = name_of(die, None)
+        if die.tag not in ["DW_TAG_const_type", "DW_TAG_volatile_type", "DW_TAG_restrict_type", "DW_TAG_atomic_type", "DW_TAG_typedef"]:
+            break
+    return name_of(die, typedef)
+
 def base_type(die):
     size = attr(die, "DW_AT_byte_size")
     enc = attr(die, "DW_AT_encoding")
@@ -59,9 +71,21 @@ def pointer_type(die):
         if not attr(target, "DW_AT_prototyped"):
             return AidlUnsupported("unprototyped_fnptr")
         return AidlFnptr(get_signature(target))
+    if target.tag == "DW_TAG_structure_type":
+        name = struct_name(die)
+        if name is None:
+            return AidlUnsupported("struct_noname")
+        return AidlStructptr(name, struct_reasons(name))
     if target.tag in AGGREGATE_TAGS:
         return AidlUnsupported("aggregate_ptr")
     return AidlPointer(get_type(die))
+
+def struct_reasons(name):
+    if structmap is None:
+        return ()
+    if name not in structmap:
+        return () 
+    return tuple(structmap[name].reasons())
 
 def get_type(die):
     die = strip(die)

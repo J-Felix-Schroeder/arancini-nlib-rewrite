@@ -78,6 +78,17 @@ class AidlFnptr(AidlPointer):
     def unsupported_reasons(self):
         return ["fnptr"]
 
+@dataclass(frozen=True)
+class AidlStructptr(AidlType):
+    name: Any
+    reasons: Any
+
+    def idl_name(self):
+        return "i64"
+
+    def unsupported_reasons(self):
+        return list(self.reasons)
+
 class AidlBasicType:
     VOID = AidlVoid()
     VARARG = AidlVararg()

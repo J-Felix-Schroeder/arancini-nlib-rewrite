@@ -1,7 +1,9 @@
 import argparse
-from getdwarf import get_dwarf_path, get_path_from_soname
+from getdwarf import get_dwarf_path, get_path_from_soname, get_amd64_dwarf_path
+import structchecker
 from elfhelper import get_exported_symbols, get_dtneeded
 from dwarfhelper import get_signatures
+import dwarfhelper
 from aidlsig import AidlLibrary, AidlSignature
 from flibmaker import build_flib, translate_flib, translate_libc
 from pathman import get_idl_path, get_musl_auto_lid_path
@@ -9,6 +11,7 @@ from run import run_txlat
 import analytics
 
 analyze = False
+struct_check = True
 
 def analyze_lib(library, symbols):
     analytics.start()
@@ -41,6 +44,9 @@ def process_libc():
     # so we can copy libc idl easily to the lid file used for translation
     path = get_path_from_soname("libc.so.6")
     dwarf_path = get_dwarf_path("libc.so.6", None)
+    dwarfhelper.structmap = None
+    if struct_check:
+        dwarfhelper.structmap = structchecker.build_structmap(dwarf_path, get_amd64_dwarf_path("libc.so.6"))
     symbols = get_exported_symbols(path)
     signatures = get_signatures(dwarf_path)
     library = merge("libc.so.6", path, symbols, signatures)
@@ -74,6 +80,10 @@ def process_soname(soname):
     if dwarf_path is None:
         analytics.record("no_debug_info")
         return None
+    dwarfhelper.structmap = None
+    if struct_check:
+        amd64_dwarf_path = get_amd64_dwarf_path(soname)
+        dwarfhelper.structmap = structchecker.build_structmap(dwarf_path, amd64_dwarf_path)
     symbols = get_exported_symbols(path)
     signatures = get_signatures(dwarf_path)
     library = merge(soname, path, symbols, signatures)
@@ -93,7 +103,10 @@ def main():
     p.add_argument("-i", "--input",  nargs="?")
     p.add_argument("-o", "--output", nargs="?")
     p.add_argument("--anal", action="store_true")
+    p.add_argument("--no-struct-check", action="store_true")
     args = p.parse_args()
+    global struct_check
+    struct_check = not args.no_struct_check
     global analyze
     analyze = args.anal
     
