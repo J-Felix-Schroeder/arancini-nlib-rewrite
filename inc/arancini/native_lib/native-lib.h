@@ -18,7 +18,8 @@ enum nlib_type_class {
     NLTC_MEMPTR,
     NLTC_FNPTR,
     NLTC_FD,
-    NLTC_CPLX
+    NLTC_CPLX,
+    NLTC_VARARG
 };
 
 class NativeLibs {

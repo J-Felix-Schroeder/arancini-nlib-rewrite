@@ -9,7 +9,8 @@ enum class value_type_class {
     none,
     signed_integer,
     unsigned_integer,
-    floating_point
+    floating_point,
+    vararg
 };
 
 class value_type {

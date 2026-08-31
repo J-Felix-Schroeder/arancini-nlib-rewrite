@@ -21,6 +21,8 @@ ir::value_type_class NativeLibs::nlib_tc_to_vt(nlib_type_class tc) {
     switch (tc) {
     case NLTC_VOID:
         return ir::value_type_class::none;
+    case NLTC_VARARG:
+        return ir::value_type_class::vararg;
     case NLTC_SINT:
         return ir::value_type_class::signed_integer;
     case NLTC_UINT:

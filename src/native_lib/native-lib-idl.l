@@ -48,6 +48,7 @@ using Token = arancini::native_lib::Parser::token;
 "const" { return Token::T_CONST; }
 "void" { return Token::T_VOID; }
 "ptr" { return Token::T_PTR; }
+"..." { return Token::T_VARARG; }
 
 "(" { return Token::T_LPAREN; }
 ")" { return Token::T_RPAREN; }

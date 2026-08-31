@@ -60,11 +60,12 @@
  *        | param
  *        |
  * param : ctypedef paramname
+ *       | `...`
  * paramname: [A-Za-z]+[A-Za-z0-9]*
  */
 
 
-%token T_LIBRARY T_CALLCONV T_STRING T_FD T_CPLX T_CONST T_PTR T_VOID
+%token T_LIBRARY T_CALLCONV T_STRING T_FD T_CPLX T_CONST T_PTR T_VOID T_VARARG
 %token T_I8 T_I16 T_I32 T_I64 T_ILONG T_U1 T_U8 T_U16 T_U32 T_U64 T_ULONG T_F32 T_F64
 %token T_STAR T_SEMI T_LPAREN T_RPAREN T_LBRACKET T_RBRACKET T_COMMA
 %token <std::string> STRING_LITERAL IDENTIFIER
@@ -137,7 +138,9 @@ params: params T_COMMA param    { $$ = $1;  $$.add_child(std::move($3)); }
       |                         { $$ = idl_ast_node(IANT_PARAMS); }
       ;
 
-param: full_typedef IDENTIFIER { $$ = idl_ast_node(IANT_PARAM); $$.value = $2;  $$.add_child(std::move($1)); };
+param: full_typedef IDENTIFIER { $$ = idl_ast_node(IANT_PARAM); $$.value = $2;  $$.add_child(std::move($1)); }
+     | T_VARARG { $$ = idl_ast_node(IANT_PARAM); idl_ast_node td(IANT_TYPEDEF); td.width = 0; td.tc = 9; $$.add_child(std::move(td)); }
+     ;
 
 %%
 // Bison expects us to provide implementation - otherwise linker complains
