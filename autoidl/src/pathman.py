@@ -25,6 +25,12 @@ def get_flib_dir_path():
 def get_translated_dir_path():
     return os.path.join(get_out_dir_path(), "translated")
 
+def get_cache_dir_path():
+    return os.path.join(get_aidl_dir_path(), "cache")
+
+def get_amd64_cache_path(soname):
+    return os.path.join(get_cache_dir_path(), "amd64", soname)
+
 def get_musl_dir_path():
     return os.path.join(get_aidl_dir_path(), "musl")
 
@@ -59,6 +65,7 @@ def get_translated_path(soname):
     return os.path.join(get_translated_dir_path(), soname)
 
 def setup_dirs():
+    os.makedirs(os.path.join(get_cache_dir_path(), "amd64"), exist_ok=True)
     os.makedirs(get_idl_dir_path(), exist_ok=True)
     os.makedirs(get_flib_dir_path(), exist_ok=True)
     os.makedirs(get_translated_dir_path(), exist_ok=True)
