@@ -516,9 +516,11 @@ extern "C" int execute_internal_call(void *cpu_state, int call) {
 
 extern "C" int MainLoop(void *);
 
-uintptr_t current_addr = 0;
+#define CALLBACK_SLOTS 16
+uintptr_t current_addr[CALLBACK_SLOTS] = {0};
+int callback_count = 0;
 
-extern "C" uint64_t generic_fnptr_wrapper(uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4, uint64_t a5, uint64_t a6){
+uint64_t generic_fnptr_wrapper(int slot, uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4, uint64_t a5, uint64_t a6){
 	x86_cpu_state *cs = __current_state;
 	cs->RDI = a1;
 	cs->RSI = a2;
@@ -527,14 +529,32 @@ extern "C" uint64_t generic_fnptr_wrapper(uint64_t a1, uint64_t a2, uint64_t a3,
 	cs->R8 = a5;
 	cs->R9 = a6;
 	cs->RSP -= 8;
-	cs->PC = current_addr;
+	cs->PC = current_addr[slot];
 	MainLoop(cs);
 	return cs->RAX;
 }
 
+#define SLOT_FN(n) uint64_t slot_wrapper_##n(uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4, uint64_t a5, uint64_t a6){ return generic_fnptr_wrapper(n, a1, a2, a3, a4, a5, a6); }
+SLOT_FN(0) SLOT_FN(1) SLOT_FN(2) SLOT_FN(3) SLOT_FN(4) SLOT_FN(5) SLOT_FN(6) SLOT_FN(7)
+SLOT_FN(8) SLOT_FN(9) SLOT_FN(10) SLOT_FN(11) SLOT_FN(12) SLOT_FN(13) SLOT_FN(14) SLOT_FN(15)
+
+#define SLOT_PTR(n) (void *)&slot_wrapper_##n
+void *slot_table[CALLBACK_SLOTS] = {
+	SLOT_PTR(0), SLOT_PTR(1), SLOT_PTR(2), SLOT_PTR(3), SLOT_PTR(4), SLOT_PTR(5), SLOT_PTR(6), SLOT_PTR(7),
+	SLOT_PTR(8), SLOT_PTR(9), SLOT_PTR(10), SLOT_PTR(11), SLOT_PTR(12), SLOT_PTR(13), SLOT_PTR(14), SLOT_PTR(15),
+};
+
 extern "C" void *wrap_fnptr(uintptr_t fn_adress){
-	current_addr = fn_adress;
-	return (void *)&generic_fnptr_wrapper;
+	int i;
+	for (i = 0; i < callback_count; i++){
+		if (current_addr[i] == fn_adress)
+			return slot_table[i]; // dont need extra slot already wrapped
+	}
+	if (callback_count >= CALLBACK_SLOTS){
+		callback_count = 0; // hopefully nobody uses that anymore
+	}
+	current_addr[callback_count] = fn_adress;
+	return slot_table[callback_count++];
 }
 
 extern "C" void poison(char *s) {
