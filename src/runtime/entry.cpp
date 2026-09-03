@@ -514,6 +514,29 @@ extern "C" int execute_internal_call(void *cpu_state, int call) {
     return ctx_->internal_call(cpu_state, call);
 }
 
+extern "C" int MainLoop(void *);
+
+uintptr_t current_addr = 0;
+
+extern "C" uint64_t generic_fnptr_wrapper(uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4, uint64_t a5, uint64_t a6){
+	x86_cpu_state *cs = __current_state;
+	cs->RDI = a1;
+	cs->RSI = a2;
+	cs->RDX = a3;
+	cs->RCX = a4;
+	cs->R8 = a5;
+	cs->R9 = a6;
+	cs->RSP -= 8;
+	cs->PC = current_addr;
+	MainLoop(cs);
+	return cs->RAX;
+}
+
+extern "C" void *wrap_fnptr(uintptr_t fn_adress){
+	current_addr = fn_adress;
+	return (void *)&generic_fnptr_wrapper;
+}
+
 extern "C" void poison(char *s) {
     std::cerr << "Unimplemened Instr: " << s << "\n";
     abort();

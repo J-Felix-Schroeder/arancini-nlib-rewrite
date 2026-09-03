@@ -40,6 +40,9 @@ x86_internal_functions::create(const std::string &name) const {
     } else if (name == "handle_cpuid") {
         return std::make_shared<internal_function>(
             "handle_cpuid", function_type(value_type::v(), {}));
+    } else if (name == "wrap_fnptr") {
+	return std::make_shared<internal_function>(
+		"wrap_fnptr", function_type(value_type::u64(), {value_type::u64()}));
     }
     return nullptr;
 }

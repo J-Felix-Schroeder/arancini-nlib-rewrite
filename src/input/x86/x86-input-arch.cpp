@@ -567,6 +567,20 @@ void x86_input_arch::gen_wrapper(ir_builder &builder,
 	case value_type_class::vararg:
 	    vararg = 1;
 	    break;
+	case value_type_class::function_pointer:
+		if (gri >= 6) {
+			throw std::runtime_error("stack fnptr args is unsupported for nlib wrapper");
+		} else {
+			auto *g = &builder.insert_read_reg(value_type::u64(),
+			                                   (unsigned long)gpr_arg_regoff[gri],
+			                                   (unsigned long)gpr_arg_regidx[gri],
+			                                   gpr_arg_regname[gri])->val();
+			auto *h = &builder.insert_internal_call(
+			              builder.ifr().resolve("wrap_fnptr"), {g})->val();
+			args.push_back(h);
+			gri++;
+		}
+		break;
         case value_type_class::signed_integer:
         case value_type_class::unsigned_integer:
             if (gri >= 6) {
@@ -654,6 +668,9 @@ void x86_input_arch::gen_wrapper(ir_builder &builder,
     switch (retty.type_class()) {
     case value_type_class::none:
         break;
+    case value_type_class::function_pointer:
+	throw std::runtime_error("function pointer return type unsupported in nlib wrapper gen");
+	break;
     case value_type_class::signed_integer:
     case value_type_class::unsigned_integer:
         if (retty.element_width() <= 64) {
