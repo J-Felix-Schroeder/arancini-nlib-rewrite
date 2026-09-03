@@ -19,9 +19,9 @@ def get_structs(debug_path):
             name = name_of(die, None)
             if die.tag == "DW_TAG_typedef":
                 die = strip(die)
-                if die is None or die.tag != "DW_TAG_structure_type" or "DW_AT_name" in die.attributes:
+                if die is None or die.tag not in ["DW_TAG_structure_type", "DW_TAG_union_type"] or "DW_AT_name" in die.attributes:
                     continue
-            if die.tag != "DW_TAG_structure_type" or "DW_AT_declaration" in die.attributes:
+            if die.tag not in ["DW_TAG_structure_type", "DW_TAG_union_type"] or "DW_AT_declaration" in die.attributes:
                 continue
             size = attr(die, "DW_AT_byte_size")
             if name is None or size is None:
@@ -32,6 +32,8 @@ def get_structs(debug_path):
                     continue
                 mname = name_of(member, None)
                 moff = attr(member, "DW_AT_data_member_location")
+                if moff is None: # for unions
+                    moff = 0
                 mtarget = strip(member)
                 if mname is None or not isinstance(moff, int) or mtarget is None:
                     continue

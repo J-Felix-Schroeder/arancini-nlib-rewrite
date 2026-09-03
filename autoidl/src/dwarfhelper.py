@@ -71,7 +71,7 @@ def pointer_type(die):
         if not attr(target, "DW_AT_prototyped"):
             return AidlUnsupported("unprototyped_fnptr")
         return AidlFnptr(get_signature(target))
-    if target.tag == "DW_TAG_structure_type":
+    if target.tag in ["DW_TAG_structure_type", "DW_TAG_union_type"]:
         name = struct_name(die)
         if name is None:
             return AidlUnsupported("struct_noname")
