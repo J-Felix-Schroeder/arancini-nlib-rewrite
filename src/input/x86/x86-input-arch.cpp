@@ -570,8 +570,25 @@ void x86_input_arch::gen_wrapper(ir_builder &builder,
         case value_type_class::signed_integer:
         case value_type_class::unsigned_integer:
             if (gri >= 6) {
-                throw std::runtime_error(
-                    "Stack args unsupported in native lib wrapper.");
+                auto reg = builder.insert_read_reg(
+                    value_type(value_type_class::unsigned_integer, 64),
+                    (unsigned long)reg_offsets::RSP,
+                    (unsigned long)reg_idx::RSP, "RSP");
+                auto addr = builder.insert_add(
+                    reg->val(),
+                    builder.insert_constant_u64((gri - 5) * 8)->val());
+                auto bits = builder.insert_read_mem(
+                    value_type(value_type_class::unsigned_integer,
+                               item.element_width()),
+                    addr->val());
+                args.push_back(
+                    &builder
+                         .insert_read_mem(
+                             value_type(value_type_class::unsigned_integer,
+                                        item.element_width()),
+                             addr->val())
+                         ->val());
+                gri++;
             } else {
                 args.push_back(
                     &builder
@@ -585,8 +602,20 @@ void x86_input_arch::gen_wrapper(ir_builder &builder,
             break;
         case value_type_class::floating_point:
             if (fri >= 8) {
-                throw std::runtime_error(
-                    "Stack args unsupported in native lib wrapper.");
+                auto reg = builder.insert_read_reg(
+                    value_type(value_type_class::unsigned_integer, 64),
+                    (unsigned long)reg_offsets::RSP,
+                    (unsigned long)reg_idx::RSP, "RSP");
+                auto addr = builder.insert_add(
+                    reg->val(),
+                    builder.insert_constant_u64((fri - 7) * 8)->val());
+                auto bits = builder.insert_read_mem(
+                    value_type(value_type_class::unsigned_integer,
+                               item.element_width()),
+                    addr->val());
+                args.push_back(
+                    &builder.insert_bitcast(item, bits->val())->val());
+                fri++;
             } else {
                 auto bits = builder.insert_read_reg(
                     value_type(value_type_class::unsigned_integer, item.element_width()),
