@@ -33,11 +33,15 @@ def analyze_lib(library, symbols):
 
 def merge(soname, path, symbols, signatures):
     sigs = []
+    seen = []
     for addr, names in symbols.items():
         if addr not in signatures:
             continue
         sig = signatures[addr]
-        for name in names:
+        for name in names: 
+            if name in seen:
+                continue  
+            seen.append(name)
             sigs.append(AidlSignature(name, sig.return_type, sig.arguments))
     return AidlLibrary(soname, path, sigs)
 
