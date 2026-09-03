@@ -33,6 +33,7 @@ ir::value_type_class NativeLibs::nlib_tc_to_vt(nlib_type_class tc) {
     case NLTC_FLOAT:
         return ir::value_type_class::floating_point;
     case NLTC_FNPTR:
+	return ir::value_type_class::function_pointer;
     case NLTC_FD:
     default:
         throw std::runtime_error("Unsupported arg type for nlib def");

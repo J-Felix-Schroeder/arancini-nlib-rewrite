@@ -9,6 +9,7 @@ enum class value_type_class {
     none,
     signed_integer,
     unsigned_integer,
+    function_pointer,
     floating_point,
     vararg
 };
@@ -16,6 +17,7 @@ enum class value_type_class {
 class value_type {
   public:
     static value_type v() { return value_type(value_type_class::none, 0); }
+    static value_type fnptr() {return value_type(value_type_class::function_pointer, 64, 1);};
     static value_type u1() {
         return value_type(value_type_class::unsigned_integer, 1, 1);
     }

@@ -66,7 +66,7 @@
 
 
 %token T_LIBRARY T_CALLCONV T_STRING T_FD T_CPLX T_CONST T_PTR T_VOID T_VARARG
-%token T_I8 T_I16 T_I32 T_I64 T_ILONG T_U1 T_U8 T_U16 T_U32 T_U64 T_ULONG T_F32 T_F64
+%token T_I8 T_I16 T_I32 T_I64 T_ILONG T_U1 T_U8 T_U16 T_U32 T_U64 T_ULONG T_F32 T_F64 T_FNPTR
 %token T_STAR T_SEMI T_LPAREN T_RPAREN T_LBRACKET T_RBRACKET T_COMMA
 %token <std::string> STRING_LITERAL IDENTIFIER
 
@@ -127,6 +127,7 @@ typedef: ptrdef { $$ = $1; }
     | T_STRING  { $$ = idl_ast_node(IANT_TYPEDEF); $$.width = 64; $$.tc = 4; }
     | T_VOID    { $$ = idl_ast_node(IANT_TYPEDEF); $$.width = 0; $$.tc = 0; }
     | T_CPLX    { $$ = idl_ast_node(IANT_TYPEDEF); $$.width = 0; $$.tc = 8; }
+	| T_FNPTR { $$ = idl_ast_node(IANT_TYPEDEF); $$.width= 64; $$.tc = 6; }
     ;
 
 ptrdef: T_PTR { $$ = idl_ast_node(IANT_TYPEDEF); $$.width = 64; $$.tc = 5; }
