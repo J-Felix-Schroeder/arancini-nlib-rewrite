@@ -101,13 +101,13 @@ def process_soname(soname):
 
 def main():
     p = argparse.ArgumentParser(prog="autoidl", description="automatic idl generation")
-    p.add_argument("-s", "--soname", nargs="+")
+    p.add_argument("-s", "--soname", help="soname input", nargs="+")
     p.add_argument("-f", "--file", help="file with one soname per line", nargs="?")
-    p.add_argument("-i", "--input",  nargs="?")
-    p.add_argument("-o", "--output", nargs="?")
-    p.add_argument("--anal", action="store_true")
-    p.add_argument("--no-struct-check", action="store_true")
-    p.add_argument("--translate-libc", action="store_true")
+    p.add_argument("-i", "--input", help="input binary to translate", nargs="?")
+    p.add_argument("-o", "--output", help="output path", nargs="?")
+    p.add_argument("--anal", help="only run analytics, dont translate", action="store_true")
+    p.add_argument("--no-struct-check", help="skip struct check and whitelist all structs", action="store_true")
+    p.add_argument("--translate-libc", help="(re-)translate libc", action="store_true")
     args = p.parse_args()
     global struct_check
     struct_check = not args.no_struct_check
