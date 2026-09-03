@@ -39,16 +39,10 @@ class AidlFloat(AidlType):
     def idl_name(self):
         return "f" + str(self.bits)
 
-    def unsupported_reasons(self):
-        return ["float"]
-
 @dataclass(frozen=True)
 class AidlVararg(AidlType):
     def idl_name(self):
         return "..."
-
-    def unsupported_reasons(self):
-        return ["vararg"]
 
 @dataclass(frozen=True)
 class AidlUnsupported(AidlType):
@@ -75,8 +69,16 @@ class AidlFnptr(AidlPointer):
     def idl_name(self):
         return "fnptr"
 
-    def unsupported_reasons(self):
-        return ["fnptr"]
+    def unsupported_reasons(self): # only generic shape is supported
+        reasons = list(self.type.unsupported_reasons())
+        if len(self.type.arguments) > 6:
+            reasons.append("callback_more_than_six")
+        for arg in self.type.arguments:
+            if type(arg.type) not in [AidlInt, AidlPointer, AidlStructptr]:
+                reasons.append("callback_unsupported_arg")
+        if type(self.type.return_type) not in [AidlVoid, AidlInt, AidlPointer, AidlStructptr]:
+            reasons.append("callback_unsupported_return")
+        return reasons
 
 @dataclass(frozen=True)
 class AidlStructptr(AidlType):
@@ -113,8 +115,13 @@ class AidlSignature:
 
     def unsupported_reasons(self):
         reasons = list(self.return_type.unsupported_reasons())
+        gprs = 0
         for arg in self.arguments:
             reasons += arg.type.unsupported_reasons()
+            if type(arg.type) == AidlFnptr and gprs >= 6:
+                reasons.append("fnptr_on_stack") # the wrapper only works with gpr
+            if type(arg.type) not in [AidlFloat, AidlVararg]:
+                gprs = gprs + 1
         return reasons
 
     def is_supported(self):
