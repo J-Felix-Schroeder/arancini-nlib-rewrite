@@ -555,6 +555,7 @@ void x86_input_arch::gen_wrapper(ir_builder &builder,
 
     int gri = 0;
     int fri = 0;
+    int vararg = 0;
 
     std::vector<port *> args;
     args.reserve(params.size());
@@ -563,6 +564,9 @@ void x86_input_arch::gen_wrapper(ir_builder &builder,
         switch (item.type_class()) {
         case value_type_class::none:
             break;
+	case value_type_class::vararg:
+	    vararg = 1;
+	    break;
         case value_type_class::signed_integer:
         case value_type_class::unsigned_integer:
             if (gri >= 6) {
@@ -594,7 +598,26 @@ void x86_input_arch::gen_wrapper(ir_builder &builder,
             }
         }
     }
+    if(vararg){
+	    for(gri; gri < 6; gri++){
+                args.push_back(
+                    &builder
+                         .insert_read_reg(value_type(value_type_class::unsigned_integer, 64),
+                                          (unsigned long)gpr_arg_regoff[gri],
+                                          (unsigned long)gpr_arg_regidx[gri],
+                                          gpr_arg_regname[gri])
+                         ->val());
+	}
+	for(fri; fri < 8; fri++){
 
+                auto bits = builder.insert_read_reg(
+                    value_type(value_type_class::unsigned_integer, 64),
+                    (unsigned long)zmm_arg_regoff[fri],
+                    (unsigned long)zmm_arg_regidx[fri], zmm_arg_regname[fri]);
+                args.push_back(
+                    &builder.insert_bitcast(value_type(value_type_class::floating_point,64), bits->val())->val());
+	}
+    }
     action_node *call = builder.insert_internal_call(
         std::make_unique<internal_function>(func.fname, func.sig), args);
 
