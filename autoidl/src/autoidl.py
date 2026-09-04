@@ -1,7 +1,7 @@
 import argparse
 from getdwarf import get_dwarf_path, get_path_from_soname, get_amd64_dwarf_path
 import structchecker
-from elfhelper import get_exported_symbols, get_dtneeded
+from elfhelper import get_exported_symbols, get_ifuncs, get_dtneeded
 from dwarfhelper import get_signatures
 import dwarfhelper
 from aidlsig import AidlLibrary, AidlSignature
@@ -31,13 +31,13 @@ def analyze_lib(library, symbols):
     analytics.fill("described_fn_count", len(library.signatures))
     analytics.fill("supported_fn_count", supported)
 
-def merge(soname, path, symbols, signatures, declarations):
+def merge(soname, path, symbols, ifuncs, signatures, declarations):
     sigs = []
     seen = []
     for addr, names in symbols.items():
         sig = signatures.get(addr)
         for name in names:
-            if sig is None:
+            if sig is None or name in ifuncs:
                 sig = declarations.get(name)
         if sig is None:
             continue
@@ -56,8 +56,9 @@ def process_libc():
     if struct_check:
         dwarfhelper.structmap = structchecker.build_structmap(dwarf_path, get_amd64_dwarf_path("libc.so.6"))
     symbols = get_exported_symbols(path)
+    ifuncs = get_ifuncs(path)
     signatures, declarations = get_signatures(dwarf_path)
-    library = merge("libc.so.6", path, symbols, signatures, declarations)
+    library = merge("libc.so.6", path, symbols, ifuncs, signatures, declarations)
     analyze_lib(library, symbols)
     with open(get_musl_auto_lid_path(), "w") as f:
         f.write(str(library))
@@ -95,8 +96,9 @@ def process_soname(soname):
         amd64_dwarf_path = get_amd64_dwarf_path(soname)
         dwarfhelper.structmap = structchecker.build_structmap(dwarf_path, amd64_dwarf_path)
     symbols = get_exported_symbols(path)
+    ifuncs = get_ifuncs(path)
     signatures, declarations = get_signatures(dwarf_path)
-    library = merge(soname, path, symbols, signatures, declarations)
+    library = merge(soname, path, symbols, ifuncs, signatures, declarations)
     analyze_lib(library, symbols)
     idl_path = get_idl_path(soname)
     with open(idl_path, "w") as f:

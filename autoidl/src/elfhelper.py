@@ -18,7 +18,7 @@ def get_exported_symbols(path):
     for sym in dynsym.iter_symbols():
         if not sym.name:
             continue
-        if sym['st_info']['type'] not in ('STT_FUNC', 'STT_GNU_IFUNC'):
+        if sym['st_info']['type'] not in ('STT_FUNC', 'STT_LOOS'):
             continue
         if sym['st_shndx'] == 'SHN_UNDEF':
             continue
@@ -30,6 +30,17 @@ def get_exported_symbols(path):
     f.close()
 
     return symbols
+
+def get_ifuncs(path):
+    f = open(path, "rb")
+    elf = ELFFile(f)
+    dynsym = elf.get_section_by_name(".dynsym")
+    ifuncs = []
+    for sym in dynsym.iter_symbols():
+        if sym['st_info']['type'] == 'STT_LOOS':
+            ifuncs.append(sym.name)
+    f.close()
+    return ifuncs
 
 def get_dtneeded(path):
     f = open(path, "rb")
