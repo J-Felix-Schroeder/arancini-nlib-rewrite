@@ -137,7 +137,7 @@ def get_signatures(dwarf_path):
     signatures = {}
     for cu in dwarf.iter_CUs():
         for die in cu.iter_DIEs():
-            if die.tag != "DW_TAG_subprogram" or "DW_AT_low_pc" not in die.attributes:
+            if die.tag != "DW_TAG_subprogram" or not attr(die, "DW_AT_prototyped") or "DW_AT_low_pc" not in die.attributes:
                 continue
             lowpc = die.attributes["DW_AT_low_pc"].value
             if lowpc not in signatures:
