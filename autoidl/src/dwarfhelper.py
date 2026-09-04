@@ -135,12 +135,17 @@ def get_signatures(dwarf_path):
     dwarf = elf.get_dwarf_info()
     load_supplementary(dwarf_path, elf, dwarf)
     signatures = {}
+    declarations = {}
     for cu in dwarf.iter_CUs():
         for die in cu.iter_DIEs():
-            if die.tag != "DW_TAG_subprogram" or not attr(die, "DW_AT_prototyped") or "DW_AT_low_pc" not in die.attributes:
+            if die.tag != "DW_TAG_subprogram" or not attr(die, "DW_AT_prototyped"):
                 continue
-            lowpc = die.attributes["DW_AT_low_pc"].value
-            if lowpc not in signatures:
-                signatures[lowpc] = get_signature(die)
+            if "DW_AT_low_pc" in die.attributes:
+                lowpc = die.attributes["DW_AT_low_pc"].value
+                if lowpc not in signatures:
+                    signatures[lowpc] = get_signature(die)
+            name = name_of(die, None)
+            if name is not None and name not in declarations:
+                declarations[name] = get_signature(die)
     f.close()
-    return signatures
+    return signatures, declarations
