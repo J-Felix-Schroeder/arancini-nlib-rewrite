@@ -115,6 +115,8 @@ class AidlSignature:
 
     def unsupported_reasons(self):
         reasons = list(self.return_type.unsupported_reasons())
+        if type(self.return_type) == AidlFnptr:
+            reasons.append("fnptr_return")
         gprs = 0
         for arg in self.arguments:
             reasons += arg.type.unsupported_reasons()
