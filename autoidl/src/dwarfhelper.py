@@ -1,6 +1,6 @@
 import os
 from elftools.elf.elffile import ELFFile
-from elftools.dwarf.enums import ENUM_DW_ATE
+from elftools.dwarf.enums import ENUM_DW_ATE, ENUM_DW_LANG
 from getdwarf import debuginfod_find
 from aidlsig import AidlBasicType, AidlInt, AidlFloat, AidlPointer, AidlFnptr, AidlStructptr, AidlUnsupported, AidlArgument, AidlSignature
 
@@ -137,8 +137,10 @@ def get_signatures(dwarf_path):
     signatures = {}
     declarations = {}
     for cu in dwarf.iter_CUs():
+        if attr(cu.get_top_DIE(), "DW_AT_language") == ENUM_DW_LANG["DW_LANG_Mips_Assembler"]: # yes assembler is named so though its not really mips
+            continue
         for die in cu.iter_DIEs():
-            if die.tag != "DW_TAG_subprogram" or not attr(die, "DW_AT_prototyped"):
+            if die.tag != "DW_TAG_subprogram":
                 continue
             if "DW_AT_low_pc" in die.attributes:
                 lowpc = die.attributes["DW_AT_low_pc"].value
