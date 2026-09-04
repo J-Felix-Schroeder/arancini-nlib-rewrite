@@ -24,7 +24,7 @@ def get_structs(debug_path):
             if die.tag not in ["DW_TAG_structure_type", "DW_TAG_union_type"] or "DW_AT_declaration" in die.attributes:
                 continue
             size = attr(die, "DW_AT_byte_size")
-            if name is None or size is None:
+            if name is None or not isinstance(size, int):
                 continue
             members = []
             for member in die.iter_children():
@@ -38,7 +38,7 @@ def get_structs(debug_path):
                 if mname is None or not isinstance(moff, int) or mtarget is None:
                     continue
                 msize = attr(mtarget, "DW_AT_byte_size")
-                if msize is None:
+                if not isinstance(msize, int):
                     continue
                 members.append(AidlMember(mname, moff, msize, get_type(member)))
             structs.append(AidlStruct(name, size, frozenset(members)))
