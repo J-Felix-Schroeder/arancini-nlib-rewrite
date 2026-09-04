@@ -546,6 +546,8 @@ void *slot_table[CALLBACK_SLOTS] = {
 
 extern "C" void *wrap_fnptr(uintptr_t fn_adress){
 	int i;
+	if (fn_adress < 4096 || fn_adress > (uintptr_t)-4096)
+		return (void *)fn_adress;
 	for (i = 0; i < callback_count; i++){
 		if (current_addr[i] == fn_adress)
 			return slot_table[i]; // dont need extra slot already wrapped
