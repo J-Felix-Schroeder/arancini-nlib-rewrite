@@ -143,7 +143,9 @@ class AidlLibrary:
         lines = ['library "' + self.path + '";']
         for sig in self.signatures:
             prefix = ""
+            suffix = ""
             if not sig.is_supported():
-                prefix = "#" 
-            lines.append(prefix + str(sig) + ";")
+                prefix = "#"
+                suffix = " " + " ".join(set(sig.unsupported_reasons()))
+            lines.append(prefix + str(sig) + ";" + suffix)
         return "\n".join(lines)
