@@ -1,4 +1,5 @@
 import argparse
+import os
 from getdwarf import get_dwarf_path, get_path_from_soname, get_amd64_dwarf_path
 import structchecker
 from elfhelper import get_exported_symbols, get_ifuncs, get_dtneeded
@@ -6,7 +7,7 @@ from dwarfhelper import get_signatures
 import dwarfhelper
 from aidlsig import AidlLibrary, AidlSignature
 from flibmaker import build_flib, translate_flib, translate_libc
-from pathman import get_idl_path, get_musl_auto_lid_path, get_translated_path
+from pathman import get_idl_path, get_auto_idl_path, get_musl_auto_lid_path, get_translated_path
 from run import run_txlat
 import analytics
 
@@ -100,12 +101,14 @@ def process_soname(soname):
     signatures, declarations = get_signatures(dwarf_path)
     library = merge(soname, path, symbols, ifuncs, signatures, declarations)
     analyze_lib(library, symbols)
-    idl_path = get_idl_path(soname)
-    with open(idl_path, "w") as f:
+    with open(get_auto_idl_path(soname), "w") as f:
         f.write(str(library))
     if analyze:
         return None
-    flib_path = build_flib(library)
+    idl_path = get_idl_path(soname)
+    if not os.path.isfile(idl_path):
+        idl_path = get_auto_idl_path(soname)
+    flib_path = build_flib(soname, idl_path)
     return translate_flib(soname, flib_path, idl_path)
 
 def main():
