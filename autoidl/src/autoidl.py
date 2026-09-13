@@ -7,7 +7,7 @@ from dwarfhelper import get_signatures
 import dwarfhelper
 from aidlsig import AidlLibrary, AidlSignature
 from flibmaker import build_flib, translate_flib, translate_libc
-from pathman import get_idl_path, get_auto_idl_path, get_musl_auto_lid_path, get_translated_path
+from pathman import get_idl_path, get_auto_idl_path, get_lib_path, get_musl_auto_lid_path, get_translated_path
 from run import run_txlat
 import analytics
 
@@ -108,8 +108,10 @@ def process_soname(soname):
     idl_path = get_idl_path(soname)
     if not os.path.isfile(idl_path):
         idl_path = get_auto_idl_path(soname)
-    flib_path = build_flib(soname, idl_path)
-    return translate_flib(soname, flib_path, idl_path)
+    lib_path = get_lib_path(soname)
+    if not os.path.isfile(lib_path): # only do fakelib if not real lib exist
+        lib_path = build_flib(soname, idl_path)
+    return translate_flib(soname, lib_path, idl_path)
 
 def main():
     p = argparse.ArgumentParser(prog="autoidl", description="automatic idl generation")
