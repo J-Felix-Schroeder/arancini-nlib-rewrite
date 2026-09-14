@@ -106,6 +106,7 @@ def get_type(die):
 
 def get_signature(die):
     name = name_of(die, "nonamefn")
+    fortran = attr(die.cu.get_top_DIE(), "DW_AT_language") == ENUM_DW_LANG["DW_LANG_Fortran08"] # fortran has "pointers" for everything so we need to treat it different
     args = []
     for child in die.iter_children():
         if child.tag == "DW_TAG_unspecified_parameters":
@@ -114,7 +115,11 @@ def get_signature(die):
             argname = name_of(child, "arg" + str(len(args)))
             if argname in ["library", "string", "fd", "ptr"]:
                 argname = argname + "_arg"
-            args.append(AidlArgument(get_type(child), argname))
+            target = strip(child)
+            if fortran and "DW_AT_artificial" not in child.attributes and (target is None or target.tag != "DW_TAG_pointer_type"):
+                args.append(AidlArgument(AidlBasicType.PTR, argname))
+            else:
+                args.append(AidlArgument(get_type(child), argname))
     return AidlSignature(name, get_type(die), tuple(args))
 
 def load_supplementary(dwarf_path, elf, dwarf):
