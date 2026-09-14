@@ -3,14 +3,14 @@ import subprocess, os
 from pathman import get_flib_c_path, get_flib_path, get_translated_path, get_musl_libc_path, get_musl_lid_path
 from run import run_txlat
 
-def build_flib(library): 
-    soname = library.soname
+def build_flib(soname, idl_path):
     flib_c_path = get_flib_c_path(soname)
     flib_c = open(flib_c_path, "w")
-    for sig in library.signatures:
-        if not sig.is_supported():
-            continue # yeah so there will be a bunch of missing functions
-        flib_c.write("void " + sig.name + "(void){}\n")
+    for line in open(idl_path):
+        if line.startswith("#") or line.startswith("library") or "(" not in line:
+            continue
+        name = line.split("(")[0].split()[-1]
+        flib_c.write("void " + name + "(void){}\n")
     flib_c.close()
 
     out = get_flib_path(soname)

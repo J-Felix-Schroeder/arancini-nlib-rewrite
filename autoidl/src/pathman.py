@@ -17,7 +17,7 @@ def get_out_dir_path():
     return out_dir_path
 
 def get_idl_dir_path():
-    return os.path.join(get_out_dir_path(), "idl")
+    return os.path.join(get_aidl_dir_path(), "idl")
 
 def get_flib_dir_path():
     return os.path.join(get_out_dir_path(), "flib")
@@ -55,6 +55,12 @@ def get_box64_trimmed_path():
 def get_idl_path(soname):
     return os.path.join(get_idl_dir_path(), soname + ".lid")
 
+def get_auto_idl_path(soname):
+    return os.path.join(get_idl_dir_path(), soname + ".auto.lid")
+
+def get_lib_path(soname):
+    return os.path.join(get_aidl_dir_path(), "libs", soname)
+
 def get_flib_c_path(soname):
     return os.path.join(get_flib_dir_path(), soname + ".c")
 
@@ -68,6 +74,7 @@ def setup_dirs():
     os.makedirs(os.path.join(get_cache_dir_path(), "amd64"), exist_ok=True)
     os.makedirs(get_idl_dir_path(), exist_ok=True)
     os.makedirs(get_flib_dir_path(), exist_ok=True)
+    os.makedirs(os.path.join(get_aidl_dir_path(), "libs"), exist_ok=True)
     os.makedirs(get_translated_dir_path(), exist_ok=True)
 
 setup_dirs()

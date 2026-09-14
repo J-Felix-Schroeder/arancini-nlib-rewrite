@@ -4,4 +4,5 @@ musl/musl-x86_64/
 musl/musl-*.tar.gz
 musl/musl-1*/
 musl/libc.auto.lid
+idl/*.auto.lid
 testsets/box64_trimmed.txt
