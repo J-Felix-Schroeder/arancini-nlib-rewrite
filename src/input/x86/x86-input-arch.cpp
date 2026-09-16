@@ -555,6 +555,7 @@ void x86_input_arch::gen_wrapper(ir_builder &builder,
 
     int gri = 0;
     int fri = 0;
+    int stacki = 1;
     int vararg = 0;
 
     std::vector<port *> args;
@@ -590,7 +591,7 @@ void x86_input_arch::gen_wrapper(ir_builder &builder,
                     (unsigned long)reg_idx::RSP, "RSP");
                 auto addr = builder.insert_add(
                     reg->val(),
-                    builder.insert_constant_u64((gri - 5) * 8)->val());
+                    builder.insert_constant_u64((stacki) * 8)->val());
                 auto bits = builder.insert_read_mem(
                     value_type(value_type_class::unsigned_integer,
                                item.element_width()),
@@ -602,7 +603,7 @@ void x86_input_arch::gen_wrapper(ir_builder &builder,
                                         item.element_width()),
                              addr->val())
                          ->val());
-                gri++;
+                stacki++;
             } else {
                 args.push_back(
                     &builder
@@ -622,14 +623,14 @@ void x86_input_arch::gen_wrapper(ir_builder &builder,
                     (unsigned long)reg_idx::RSP, "RSP");
                 auto addr = builder.insert_add(
                     reg->val(),
-                    builder.insert_constant_u64((fri - 7) * 8)->val());
+                    builder.insert_constant_u64((stacki) * 8)->val());
                 auto bits = builder.insert_read_mem(
                     value_type(value_type_class::unsigned_integer,
                                item.element_width()),
                     addr->val());
                 args.push_back(
                     &builder.insert_bitcast(item, bits->val())->val());
-                fri++;
+                stacki++;
             } else {
                 auto bits = builder.insert_read_reg(
                     value_type(value_type_class::unsigned_integer, item.element_width()),
