@@ -113,7 +113,7 @@ def get_signature(die):
             args.append(AidlArgument(AidlBasicType.VARARG, ""))
         elif child.tag == "DW_TAG_formal_parameter":
             argname = name_of(child, "arg" + str(len(args)))
-            if argname in ["library", "string", "fd", "ptr"]:
+            if argname in ["library", "string", "fd", "ptr", "i0", "i1", "i2", "u1", "u2", "i64"]: # a lot missing here either change parsing or add all reserved names here
                 argname = argname + "_arg"
             target = strip(child)
             if fortran and "DW_AT_artificial" not in child.attributes and (target is None or target.tag != "DW_TAG_pointer_type"):
