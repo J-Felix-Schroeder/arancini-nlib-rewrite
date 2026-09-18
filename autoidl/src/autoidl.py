@@ -18,14 +18,20 @@ libc = False
 def analyze_lib(library, symbols):
     analytics.start()
     analytics.fill("soname", library.soname)
-    exported = 0
+    seen = []
     for names in symbols.values():
-        exported = exported + len(names)
+        for name in names:
+            if name in seen:
+                continue
+            seen.append(name)
+    exported = len(seen)
     supported = 0
     for sig in library.signatures:
         reasons = set(sig.unsupported_reasons())
         if not reasons:
             supported = supported + 1
+            for tag in sig.features_used():
+                analytics.fill_feature(tag)
         for reason in reasons:
             analytics.fill_record(reason)
     analytics.fill("total_fn_count", exported)
