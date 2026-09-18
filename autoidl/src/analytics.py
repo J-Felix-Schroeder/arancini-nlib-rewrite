@@ -7,7 +7,7 @@ def record(event):
 
 def start():
     global _current
-    _current = {"reasons": {}}
+    _current = {"reasons": {}, "features": {}}
     _tables.append(_current)
 
 def fill(field, value):
@@ -15,6 +15,9 @@ def fill(field, value):
 
 def fill_record(field):
     _current["reasons"][field] = _current["reasons"].get(field, 0) + 1
+
+def fill_feature(field):
+    _current["features"][field] = _current["features"].get(field, 0) + 1
 
 def percent(part, whole):
     return str(round(100 * part / whole, 1)) + "%"
@@ -95,3 +98,12 @@ def summarize():
     print("\ntop unsupported reasons (functions blocked)")
     for count, name in sorted_reasons(reasons):
         print("  ", count, name)
+
+    features = {}
+    for t in _tables:
+        for name in t.get("features", {}):
+            features[name] = features.get(name, 0) + t["features"][name]
+    print("\nabi feature usage of supported (not-filtered) functions")
+    print("supported total:", supported)
+    for count, name in sorted_reasons(features):
+        print("  ", count, name, percent(count, supported) if supported else "")

@@ -8,6 +8,9 @@ class AidlType:
     def unsupported_reasons(self):
         return []
 
+    def features_used(self): # just for analytics when sth becomes supported move from unsupported to here
+        return []
+
     def is_supported(self):
         return not self.unsupported_reasons()
 
@@ -39,10 +42,16 @@ class AidlFloat(AidlType):
     def idl_name(self):
         return "f" + str(self.bits)
 
+    def features_used(self):
+        return ["sse"]
+
 @dataclass(frozen=True)
 class AidlVararg(AidlType):
     def idl_name(self):
         return "..."
+
+    def features_used(self):
+        return ["vararg"]
 
 @dataclass(frozen=True)
 class AidlUnsupported(AidlType):
@@ -68,6 +77,9 @@ class AidlFnptr(AidlPointer):
 
     def idl_name(self):
         return "fnptr"
+
+    def features_used(self):
+        return ["fnptr"]
 
     def unsupported_reasons(self): # only generic shape is supported
         reasons = list(self.type.unsupported_reasons())
@@ -125,6 +137,19 @@ class AidlSignature:
             if type(arg.type) not in [AidlFloat, AidlVararg]:
                 gprs = gprs + 1
         return reasons
+
+    def features_used(self):
+        tags = set(self.return_type.features_used())
+        gprs = 0
+        for arg in self.arguments:
+            tags.update(arg.type.features_used())
+            if type(arg.type) not in [AidlFloat, AidlVararg]:
+                gprs = gprs + 1
+        if gprs > 6:
+            tags.add("more_than_six_int")
+        if gprs <= 6 and not (tags & {"sse", "vararg", "fnptr"}):
+            tags.add("only_int")
+        return tags
 
     def is_supported(self):
         return not self.unsupported_reasons()
